@@ -1,0 +1,33 @@
+# Ignore the .git directory
+.git
+
+# Ignore the .gitignore file itself
+.gitignore
+
+# Ignore Docker-related files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Ignore environment files
+.env
+.env.local
+
+# Ignore virtual environment
+.venv/
+venv/
+
+# Ignore IDE/editor directories
+.idea/
+.vscode/
+
+# Ignore test directories
+tests/
+
+# Ignore build directories
+build/
+dist/
+*.egg-info/
+
+# Ignore logs
+*.log

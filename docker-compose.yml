@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: python
+      POSTGRES_DB: project_management
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    container_name: api_service
+    environment:
+      DB_URL: postgresql+asyncpg://postgres:python@db:5432/project_management
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+volumes:
+  postgres_data:

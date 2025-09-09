@@ -75,11 +75,6 @@ venv.bak/
 # VS Code settings
 .vscode/
 
-# Docker
-.docker/
-.dockerignore
-Dockerfile
-docker-compose.yml
 
 # Environment variables
 .env

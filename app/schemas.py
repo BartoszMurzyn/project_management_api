@@ -1,5 +1,7 @@
 from datetime import datetime
+
 from pydantic import BaseModel, EmailStr
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -16,7 +18,6 @@ class UserResponse(BaseModel):
 class ProjectCreate(BaseModel):
     name: str
     description: str
-    owner_id: int
 
 class ProjectUpdate(BaseModel):
     name: str

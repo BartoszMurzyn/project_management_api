@@ -1,14 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
-from app.services import ProjectService, ProjectServiceError, ProjectNotFoundError, UserNotFoundError
-from app.database import get_async_session
+from project_management_core.domain.services.project_service import ProjectService, ProjectServiceError, ProjectNotFoundError
+from project_management_core.domain.services.user_service import  UserNotFoundError
+
+from project_management_core.infrastructure.repositories.db.project_repository_impl import ProjectRepositoryImpl
+from project_management_core.infrastructure.repositories.db.connection import get_async_session
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 def get_project_service(session: AsyncSession = Depends(get_async_session)) -> ProjectService:
-    return ProjectService(session)
+    repo = ProjectRepositoryImpl(session)
+    return ProjectService(repo)
 
 
 @router.post('')

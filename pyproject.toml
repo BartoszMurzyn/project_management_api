@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-management-api"
+version = "0.1.0"
+description = "FastAPI-based Project Management API"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Your Name" }]
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "bcrypt",
+  "pydantic",
+  "greenlet",
+  "asyncpg",
+  "PyJWT",
+  "python-multipart",
+  "pydantic[email]",
+  "project_management_core @ git+https://github.com/BartoszMurzyn/project-management-core.git"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.black]
+line-length = 88
+skip-string-normalization = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+exclude = ["__pycache__", ".venv", "venv", "build", "dist"]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+

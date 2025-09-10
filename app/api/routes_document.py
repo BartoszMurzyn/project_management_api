@@ -1,181 +1,225 @@
-from fastapi import APIRouter, Depends, HTTPException
+
+from app.api.routes_auth import get_current_user
+from app.api.routes_project import get_project_service
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from project_management_core.domain.entities.user import User
-from project_management_core.domain.services.project_service import (
-    ProjectNotFoundError,
-    ProjectService,
-    ProjectServiceError,
-)
-from project_management_core.domain.services.user_service import UserNotFoundError, UserService
+from project_management_core.domain.services.document_service import DocumentService
+from project_management_core.domain.services.project_service import ProjectService
 from project_management_core.infrastructure.repositories.db.connection import (
     get_async_session,
 )
-from project_management_core.infrastructure.repositories.db.project_repository_impl import (
-    ProjectRepositoryImpl,
+from project_management_core.infrastructure.repositories.db.document_repository_impl import (
+    DocumentRepositoryImpl,
 )
-
-from project_management_core.infrastructure.repositories.db.user_repository_impl import (
-    UserRepositoryImpl,
-)
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.routes_auth import get_current_user, get_user_service
-from app.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.schemas import DocumentMetadata, DocumentResponse
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(prefix='/projects', tags=["documents"])
 
-def get_project_service(
-    session: AsyncSession = Depends(get_async_session)) -> ProjectService:
+def get_document_service(session: AsyncSession = 
+        Depends(get_async_session)) -> DocumentService:
     """
-    Dependency provider for ProjectService.
+    Dependency provider for DocumentService.
 
     Args:
         session (AsyncSession): Asynchronous SQLAlchemy session.
 
     Returns:
-        ProjectService: Service handling project-related operations.
+        DocumentService: Service handling document-related operations.
     """
-    repo = ProjectRepositoryImpl(session)
-    return ProjectService(repo)
+    repo = DocumentRepositoryImpl(session)
+    return DocumentService(repo)
 
-
-
-
-@router.post('')
-async def create_project(payload: ProjectCreate, 
-                        current_user : User = Depends(get_current_user),
-                        service: ProjectService = Depends(get_project_service)):
-    """
-    Create a new project owned by the current user.
-
-    Args:
-        payload (ProjectCreate): Data for creating a project (name, description).
-        current_user (User): Authenticated user (project owner).
-        service (ProjectService): Project service dependency.
-
-    Returns:
-        Project: Created project object.
-
-    Raises:
-        HTTPException: If project creation fails.
-    """
-    try:
-        return await service.create_project(
-            name =payload.name, 
-            description =payload.description, 
-            owner_id = current_user.id)
-    except ProjectServiceError:
-        raise HTTPException(status_code=400, detail="Unable to create project")
-
-@router.get("")
-async def get_projects(
-    current_user : User = Depends(get_current_user),
-    service: ProjectService = Depends(get_project_service)):
-    """
-    Retrieve all projects owned by the current user.
-
-    Args:
-        current_user (User): Authenticated user.
-        service (ProjectService): Project service dependency.
-
-    Returns:
-        list[Project]: List of projects owned by the user.
-
-    Raises:
-        HTTPException: If user not found.
-    """
-    try:
-        return await service.get_projects_for_user(current_user.id) 
-    except UserNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-@router.get("/{project_id}")
-async def get_project_by_id(
+async def ensure_project_owner_helper(
     project_id: int,
-    current_user : User = Depends(get_current_user),
-    service: ProjectService = Depends(get_project_service)
-):
+    current_user: User,
+    project_service: ProjectService):
     """
-    Retrieve a project by its ID.
+    Ensure that the current user is the owner of the given project.
 
     Args:
-        project_id (int): ID of the project to retrieve.
-        current_user (User): Authenticated user.
-        service (ProjectService): Project service dependency.
+        project_id (int): ID of the project.
+        current_user (User): Currently authenticated user.
+        project_service (ProjectService): Service for managing projects.
 
     Returns:
-        ProjectResponse: Project details.
+        Project: The project entity if found and owned by the user.
 
     Raises:
-        HTTPException:
-            - 404 if project not found.
-            - 403 if user is not authorized to access the project.
+        HTTPException: If project not found or user is not the owner.
     """
-    project = await service.get_project(project_id)
+    project = await project_service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     if project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, 
-        detail="Not authorized to view this project")
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return project
 
-    return ProjectResponse(**project.dict())
-        
 
-@router.put("/{project_id}")
-async def update_project(project_id: int, payload: ProjectUpdate, 
-            service: ProjectService = Depends(get_project_service)):
+
+@router.get("/{project_id}/documents")
+async def get_documents_from_project(
+    project_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+    project_service: ProjectService = Depends(get_project_service)):
     """
-    Update a project's details.
+    Get all documents for a project owned by the current user.
 
     Args:
-        project_id (int): ID of the project to update.
-        payload (ProjectUpdate): Updated project data (name, description).
-        service (ProjectService): Project service dependency.
+        project_id (int): ID of the project.
+        current_user (User): Authenticated user.
+        service (DocumentService): Document service dependency.
+        project_service (ProjectService): Project service dependency.
 
     Returns:
-        ProjectResponse: Updated project details.
+        list[DocumentResponse]: List of documents for the project.
 
     Raises:
-        HTTPException: If update fails.
+        HTTPException: If project not found, not owned by user, or invalid query.
     """
+    await ensure_project_owner_helper(project_id, current_user, project_service)
     try:
-        result = await service.update_project(project_id, 
-        payload.name, 
-        payload.description)
-        return ProjectResponse(**result.dict())
+        result = await service.get_documents_for_project(project_id)
+        if result is None:
+            return []
+        return [DocumentResponse(**res.dict()) for res in result]
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.delete("/{project_id}")
-async def delete_project(
+@router.post('/{project_id}/documents')
+async def upload_document(
     project_id: int,
-    current_user : User = Depends(get_current_user),
-    service: ProjectService = Depends(get_project_service)):
+    current_user: User = Depends(get_current_user),
+    file: UploadFile = File(...),
+    service: DocumentService = Depends(get_document_service),
+    project_service: ProjectService = Depends(get_project_service)):
     """
-    Delete a project by ID if owned by the current user.
+    Upload a new document to a project.
 
     Args:
-        project_id (int): ID of the project to delete.
+        project_id (int): ID of the project.
         current_user (User): Authenticated user.
-        service (ProjectService): Project service dependency.
+        file (UploadFile): File uploaded by user.
+        service (DocumentService): Document service dependency.
+        project_service (ProjectService): Project service dependency.
+
+    Returns:
+        DocumentResponse: Metadata of the uploaded document.
+
+    Raises:
+        HTTPException: If project is invalid or upload fails.
+    """
+    await ensure_project_owner_helper(project_id, current_user, project_service)
+
+    try:
+        document = await service.upload_document(file.file, file.filename, 
+                            file.content_type, project_id, current_user.id)
+        return DocumentResponse(
+            id=document.id,
+            original_filename=document.original_filename,
+            file_size=document.file_size,
+            content_type=document.content_type,
+            project_id=document.project_id,
+            uploaded_by=document.uploaded_by,
+            uploaded_at=document.uploaded_at
+        )
+    except ValueError as e:
+        raise HTTPException(status_code= 400, detail=str(e))
+
+@router.get('/{project_id}/documents/{document_id}')
+async def get_document_from_project(
+    project_id: int,
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+    project_service: ProjectService = Depends(get_project_service)):
+    """
+    Retrieve a single document from a project.
+
+    Args:
+        project_id (int): ID of the project.
+        document_id (int): ID of the document.
+        current_user (User): Authenticated user.
+        service (DocumentService): Document service dependency.
+        project_service (ProjectService): Project service dependency.
+
+    Returns:
+        DocumentResponse: The requested document.
+
+    Raises:
+        HTTPException: If project not found, not owned by user, or document not found.
+    """
+    await ensure_project_owner_helper(project_id, current_user, project_service)
+    try:
+        documents = await service.get_documents_for_project(project_id)
+        for doc in documents:
+            if doc.id == document_id:
+                return DocumentResponse(**doc.dict())
+        raise HTTPException(status_code=404, detail="Document not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete('/{project_id}/documents/{document_id}')
+async def delete_document_from_project(
+    project_id: int,
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+    project_service: ProjectService = Depends(get_project_service)):
+    """
+    Delete a document from a project.
+
+    Args:
+        project_id (int): ID of the project.
+        document_id (int): ID of the document.
+        current_user (User): Authenticated user.
+        service (DocumentService): Document service dependency.
+        project_service (ProjectService): Project service dependency.
 
     Returns:
         dict: Success message confirming deletion.
 
     Raises:
-        HTTPException:
-            - 403 if user not authorized to delete the project.
-            - 404 if project not found.
-            - 400 if deletion fails due to service error.
+        HTTPException: If deletion fails or project not owned by user.
     """
-    project = await service.get_project(project_id)
-    if project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, 
-        detail="Not authorized to delete this project")
+    await ensure_project_owner_helper(project_id, current_user, project_service)
     try:
-        await service.delete_project(project_id)
-        return {"message": "Project deleted successfully"}
-    except ProjectNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ProjectServiceError as e:
+        await service.delete_document(document_id, current_user.id)
+        return {"message": "Document deleted successfully"}
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get('/{project_id}/documents/{document_id}/metadata')
+async def get_document_metadata(
+    project_id: int,
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+    project_service: ProjectService = Depends(get_project_service)):
+    """
+    Retrieve metadata for a specific document in a project.
+
+    Args:
+        project_id (int): ID of the project.
+        document_id (int): ID of the document.
+        current_user (User): Authenticated user.
+        service (DocumentService): Document service dependency.
+        project_service (ProjectService): Project service dependency.
+
+    Returns:
+        DocumentMetadata: Metadata of the requested document.
+
+    Raises:
+        HTTPException: If project not found, not owned by user, or document not found.
+    """
+    await ensure_project_owner_helper(project_id, current_user, project_service)
+    try:
+        documents = await service.get_documents_for_project(project_id)
+        for doc in documents:
+            if doc.id == document_id:
+                return DocumentMetadata(**doc.get_metadata())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

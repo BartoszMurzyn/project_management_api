@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 
 from pydantic import BaseModel, EmailStr
 
@@ -28,6 +29,7 @@ class ProjectResponse(BaseModel):
     name: str
     description: str
     owner_id: int
+    participants: List[int]
 
 class DocumentResponse(BaseModel):
     id: int

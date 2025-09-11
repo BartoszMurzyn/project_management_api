@@ -1,14 +1,15 @@
-# Python bytecode files
+# =========================
+# Python bytecode / compiled
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
+# =========================
 # Distribution / packaging
+# =========================
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -23,15 +24,18 @@ var/
 .installed.cfg
 *.egg
 
+# =========================
 # PyInstaller
+# =========================
 *.manifest
 *.spec
 
-# Installer logs
+# =========================
+# Logs / reports / coverage
+# =========================
+*.log
 pip-log.txt
 pip-delete-this-directory.txt
-
-# Unit test / coverage reports
 htmlcov/
 .tox/
 .nox/
@@ -46,44 +50,38 @@ coverage.xml
 .pytest_cache/
 cover/
 
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-
-# Sphinx documentation
+# =========================
+# Documentation
+# =========================
 docs/_build/
 
-# PyBuilder
-target/
-
-# Virtual environment
+# =========================
+# Virtual environments
+# =========================
 .venv/
 venv/
 ENV/
 env.bak/
 venv.bak/
 
+# =========================
+# IDE / editor settings
+# =========================
 # VS Code
 .vscode/
 
 # PyCharm
 .idea/
 
-# VS Code settings
-.vscode/
-
-
+# =========================
 # Environment variables
+# =========================
 .env
 .env.local
 .env.*.local
 
-# Logs
-*.log
-
+# =========================
 # Operating system files
+# =========================
 .DS_Store
 Thumbs.db

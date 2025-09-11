@@ -15,6 +15,4 @@ app.include_router(routes_document.router)
 
 @app.on_event("startup")
 async def on_startup():
-    # Create tables before serving requests
     await init_models()
-

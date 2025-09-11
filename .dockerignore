@@ -1,28 +1,81 @@
-# Ignore the .git directory
+# =========================
+# Git
+# =========================
 .git
-
-# Ignore the .gitignore file itself
 .gitignore
 
-# Ignore environment files
+# =========================
+# Environment files / credentials
+# =========================
 .env
 .env.local
+env.sh
 
-# Ignore virtual environment
+# =========================
+# Virtual environments
+# =========================
 .venv/
 venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Ignore IDE/editor directories
-.idea/
-.vscode/
-
-# Ignore test directories
-tests/
-
-# Ignore build directories
+# =========================
+# Build / packaging artifacts
+# =========================
 build/
 dist/
 *.egg-info/
+*.egg
+*.whl
 
-# Ignore logs
+# =========================
+# IDE / editor files
+# =========================
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+# Logs / coverage / test reports
+# =========================
 *.log
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+.tox/
+.nox/
+
+# =========================
+# Testing / development files
+# =========================
+tests/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+._*
+
+# =========================
+# Temporary / backup files
+# =========================
+*.tmp
+*.swp
+*.swn
+*~
+*.bak
+*.old
+*.orig
+*.backup
+
+# =========================
+# Node / JS (if any)
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

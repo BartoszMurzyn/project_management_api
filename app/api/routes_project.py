@@ -114,7 +114,7 @@ async def get_project_by_id(
     project = await service.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    if project.owner_id != current_user.id:
+    if project.owner_id != current_user.id and current_user.id not in project.participants:
         raise HTTPException(status_code=403, 
         detail="Not authorized to view this project")
 
@@ -193,7 +193,7 @@ async def invite_user_to_project(
         updated_project = await project_service.add_user_to_project(
             project_id=project_id,
             user_id=user_to_invite.id,
-            current_user=current_user  # Changed from current_user_id=current_user.id
+            current_user=current_user 
         )
         return ProjectResponse(**updated_project.dict())
     except UserNotFoundError:
